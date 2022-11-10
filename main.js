@@ -5,6 +5,7 @@ let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 
+
 function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
@@ -29,7 +30,7 @@ function Model(name) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
-   
+        
         gl.drawArrays(gl.LINE_STRIP, 0, this.count);
     }
 }
@@ -86,14 +87,38 @@ function draw() {
     surface.Draw();
 }
 
+
 function CreateSurfaceData()
 {
-    let vertexList = [];
+    const step = 2.0;
+    const min = -Math.PI / 2;
+    const max = Math.PI / 2;    
+    
 
-    for (let i=0; i<360; i+=5) {
-        vertexList.push( Math.sin(deg2rad(i)), 1, Math.cos(deg2rad(i)) );
-        vertexList.push( Math.sin(deg2rad(i)), 0, Math.cos(deg2rad(i)) );
-    }
+    let vertexList = [];
+    for (let u = -180; u < 180; u += step){
+        const uRad = deg2rad(u);
+            for (let v = -180; v <= 180; v += step){
+                const vRad = deg2rad(v);
+                    let x = uRad;
+                    let y = vRad;
+                    let z = Math.acos(-3 * (Math.cos(uRad) + Math.cos(vRad)) / (3 + 4 * Math.cos(uRad) * Math.cos(vRad)));
+                    
+                    vertexList.push(x/3, y/3, z/3);
+                }
+        }
+
+        for (let u = -180; u < 180; u += step){
+            const uRad = deg2rad(u);
+                for (let v = -180; v <= 180; v += step){
+                    const vRad = deg2rad(v);
+                        let x = uRad;
+                        let y = vRad;
+                        let z = Math.acos(-3 * (Math.cos(uRad) + Math.cos(vRad)) / (3 + 4 * Math.cos(uRad) * Math.cos(vRad)));
+                        
+                        vertexList.push(x/3, y/3, -z/3);
+                    }
+            }
 
     return vertexList;
 }
