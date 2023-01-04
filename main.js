@@ -15,12 +15,16 @@ function deg2rad(angle) {
 function Model(name) {
     this.name = name;
     this.iVertexBuffer = gl.createBuffer();
+    this.iNormalBuffer = gl.createBuffer();
     this.count = 0;
 
-    this.BufferData = function(vertices) {
+    this.BufferData = function(vertices, normals) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STREAM_DRAW);
 
         this.count = vertices.length / 3;
     }
@@ -31,12 +35,14 @@ function Model(name) {
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iNormalBuffer);
+        gl.vertexAttribPointer(shProgram.iAttribNormal, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iAttribNormal);
+
         let breakPoint = this.count / 2;
 
-        console.log(breakPoint);
-
-        gl.drawArrays(gl.LINE_STRIP, 0, breakPoint);
-        gl.drawArrays(gl.LINE_STRIP, breakPoint, breakPoint);
+        gl.drawArrays(gl.TRIANGLES_FAN, 0, breakPoint);
+        gl.drawArrays(gl.TRIANGLES_FAN, breakPoint, breakPoint);
 
     }
 }
@@ -50,10 +56,13 @@ function ShaderProgram(name, program) {
 
     // Location of the attribute variable in the shader program.
     this.iAttribVertex = -1;
+    this.iAttribNormal = -1;
     // Location of the uniform specifying a color for the primitive.
     this.iColor = -1;
     // Location of the uniform matrix representing the combined transformation.
     this.iModelViewProjectionMatrix = -1;
+    this.iNormalMatrix = -1;
+    this.lightPosLoc = -1;
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -70,7 +79,7 @@ function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     /* Set the values of the projection transformation */
-    let projection = m4.perspective(Math.PI / 8, 1, 8, 12);
+    let projection = m4.orthographic(-10, 10, -10, 10, -40, 40)
 
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
@@ -95,36 +104,42 @@ function draw() {
 
 
 function CreateSurfaceData() {
-    const step = 5.0;
-    const min = -180;
-    const max = 180;
+  const step = 2.5;
+  const min = -180;
+  const max = 180;
 
-    let vertexList = [];
-    for (let u = min; u < max; u += step) {
-        const uRad = deg2rad(u);
-        for (let v = min; v <= max; v += step) {
-            const vRad = deg2rad(v);
-            let x = uRad;
-            let y = vRad;
-            let z = Math.acos(-3 * (Math.cos(uRad) + Math.cos(vRad)) / (3 + 4 * Math.cos(uRad) * Math.cos(vRad)));
+  function f(u, v) {
+    return Math.acos(-3 * (Math.cos(u) + Math.cos(v)) / (3 + 4 * Math.cos(u) * Math.cos(v)));
+  }
 
-            vertexList.push(x / 3, y / 3, z / 3);
-        }
+  let vertexList = [];
+  let normalList = [];
+  for (let u = min; u < max; u += step) {
+    const uRad = deg2rad(u);
+    for (let v = min; v <= max; v += step) {
+      const vRad = deg2rad(v);
+
+      const h = 0.0001;
+
+      const df_du = (f(uRad + h, vRad) - f(uRad, vRad)) / h;
+      const df_dv = (f(uRad, vRad + h) - f(uRad, vRad)) / h;
+
+      const plusTangentU = [uRad, vRad, df_du];
+      const plusTangentV = [uRad, vRad, df_dv];
+      const minusTangentU = [uRad, vRad, -df_du];
+      const minusTangentV = [uRad, vRad, -df_dv];
+
+      const plusNormal = m4.normalize(m4.cross(plusTangentU, plusTangentV));
+      const minusNormal = m4.normalize(m4.cross(minusTangentU, minusTangentV));
+
+      vertexList.push(uRad, vRad, f(uRad, vRad));
+      vertexList.push(uRad, vRad, -f(uRad, vRad));
+      normalList.push(plusNormal);
+      normalList.push(minusNormal);
     }
+  }
 
-    for (let u = min; u < max; u += step) {
-        const uRad = deg2rad(u);
-        for (let v = min; v <= max; v += step) {
-            const vRad = deg2rad(v);
-            let x = uRad;
-            let y = vRad;
-            let z = Math.acos(-3 * (Math.cos(uRad) + Math.cos(vRad)) / (3 + 4 * Math.cos(uRad) * Math.cos(vRad)));
-
-            vertexList.push(x / 3, y / 3, -z / 3);
-        }
-    }
-
-    return vertexList;
+  return vertexList;
 }
 
 
@@ -136,6 +151,7 @@ function initGL() {
     shProgram.Use();
 
     shProgram.iAttribVertex = gl.getAttribLocation(prog, "vertex");
+    shProgram.iAttribNormal = gl.getAttribLocation(prog, "normal");
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
     shProgram.iColor = gl.getUniformLocation(prog, "color");
 
