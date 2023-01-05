@@ -4,7 +4,7 @@ let gl; // The webgl context.
 let surface; // A surface model
 let shProgram; // A shader program
 let spaceball; // A SimpleRotator object that lets the user rotate the view by mouse.
-let xVal = 0;
+let xVal = 1;
 let yVal = 0;
 let zVal = 0;
 
@@ -59,18 +59,13 @@ function ShaderProgram(name, program) {
 
     this.iModelViewProjectionMatrix = -1;
 
-    // normals
     this.iAttribNormal = -1;
     this.iNormalMatrix = -1;
 
-    // colors
     this.iAmbientColor = -1;
     this.iDiffuseColor = -1;
 
-    // shines
     this.iShininess = -1;
-
-    // light Dir
     this.iLightDir = -1;
 
     this.Use = function () {
@@ -88,7 +83,6 @@ function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     const lDir = [xVal, yVal, zVal];
-    console.log(lDir);
 
     /* Set the values of the projection transformation */
     const projection = m4.orthographic(-10, 10, -10, 10, -40, 40);
@@ -110,7 +104,7 @@ function draw() {
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.uniformMatrix4fv(shProgram.iNormalMatrix, false, normalMatrix);
 
-    gl.uniform1f(shProgram.iShininess, 10.0);
+    gl.uniform1f(shProgram.iShininess, 2.0);
     gl.uniform3fv(shProgram.iLightDir, lDir);
     gl.uniform3fv(shProgram.iAmbientColor, [0.2, 0.1, 0.0]);
     gl.uniform3fv(shProgram.iDiffuseColor, [1.0, 1.0, 0.0]);
@@ -258,60 +252,74 @@ function init() {
 const onArrowLeftKeyX = () => {
     if (xVal < -25){
         xVal = -25;
+        draw();
     }
-    else if (xVal) {
-    
+    else if (xVal > 25) {
+        xVal = 25;
     }
+    xVal -= 1;
+    draw();
 }
 
 const onArrowRightKeyX = () => {
-    if (xVal < -25 || xVal > 25){
-        console.log('limits: [-25, 25]');
-    }
-    else{
-        xVal += 1;
+    if (xVal < -25){
+        xVal = -25;
         draw();
     }
+    else if (xVal > 25) {
+        xVal = 25;
+    }
+    xVal += 1;
+    draw();
 }
 
 const onArrowLeftKeyY = () => {
-    if (yVal <= -25 || yVal >= 25){
-        console.log('limits: [-25, 25]');
-    }
-    else {
-        yVal -= 1;
+    if (yVal < -25){
+        yVal = -25;
         draw();
     }
+    else if (yVal > 25) {
+        yVal = 25;
+    }
+    yVal -= 1;
+    draw();
 }
 
 const onArrowRightKeyY = () => {
-    if (yVal <= -25 || yVal >= 25){
-        console.log('limits: [-25, 25]');
-    }
-    else{
-        yVal += 1;
+    if (yVal < -25){
+        yVal = -25;
         draw();
     }
+    else if (yVal > 25) {
+        yVal = 25;
+    }
+    yVal += 1;
+    draw();
 }
 
+
 const onArrowLeftKeyZ = () => {
-    if (zVal <= -25 || zVal >= 25){
-        console.log('limits: [-25, 25]');
-    }
-    else {
-        zVal -= 1;
+    if (zVal < -25){
+        zVal = -25;
         draw();
     }
+    else if (zVal > 25) {
+        zVal = 25;
+    }
+    zVal -= 1;
+    draw();
 }
 
 const onArrowRightKeyZ = () => {
-    if (zVal <= -25 || zVal >= 25){
-        console.log('limits: [-25, 25]');
-    }
-    else{
-        zVal += 1;
+    if (zVal < -25){
+        zVal = -25;
         draw();
     }
+    else if (zVal > 25) {
+        zVal = 25;
+    }
+    zVal += 1;
+    draw();
 }
 
 let keysPressed = {};
@@ -319,27 +327,25 @@ document.addEventListener('keydown', (event) => {
     keysPressed[event.key] = true;
  
     if (keysPressed['x'] && event.key == 'ArrowLeft') {
-        onArrowLeftKeyX();
-        console.log(event.key);
+        onArrowLeftKeyY();
     }
     if (keysPressed['x'] && event.key == 'ArrowRight') {
-        onArrowRightKeyX();
+        onArrowRightKeyY();
+    }
+    if (keysPressed['y'] && event.key == 'ArrowLeft') {
+        onArrowLeftKeyY();
+    }
+    if (keysPressed['y'] && event.key == 'ArrowRight') {
+        onArrowRightKeyY();
+    }
+    if (keysPressed['z'] && event.key == 'ArrowLeft') {
+        onArrowLeftKeyZ();
+    }
+    if (keysPressed['z'] && event.key == 'ArrowRight') {
+        onArrowRightKeyZ();
     }
  });
  
  document.addEventListener('keyup', (event) => {
     delete keysPressed[event.key];
  });
-
-// window.addEventListener("keydown", (event) => {
-//     switch (event.key) {
-//         case 'ArrowLeft' && 'x':
-//             onArrowLeftKeyX()
-//             break;
-//         case 'ArrowRight' && 'x':
-//             onArrowRightKeyX()
-//             break;
-//         default:
-//             break;
-//     }
-// });
