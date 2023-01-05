@@ -327,10 +327,10 @@ document.addEventListener('keydown', (event) => {
     keysPressed[event.key] = true;
  
     if (keysPressed['x'] && event.key == 'ArrowLeft') {
-        onArrowLeftKeyY();
+        onArrowLeftKeyX();
     }
     if (keysPressed['x'] && event.key == 'ArrowRight') {
-        onArrowRightKeyY();
+        onArrowRightKeyX();
     }
     if (keysPressed['y'] && event.key == 'ArrowLeft') {
         onArrowLeftKeyY();
