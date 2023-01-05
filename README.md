@@ -20,3 +20,6 @@ _Normal Analytic_
 
 _Light path lineSeg_
 
+![image](https://github.com/mholovakin/webGL/blob/PA2/images/photo_2023-01-05_22-48-17.jpg)
+
+![gif](https://github.com/mholovakin/webGL/blob/PA2/images/vggi2.gif)
