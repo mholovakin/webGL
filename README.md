@@ -8,7 +8,7 @@ PA 2 Variant 5 Mykyta Holovakin TR-22mp
 
 The Neovious' Surface with "Trackball" Mouse Rotation
 
-###[Explore!](https://mholovakin.github.io/webGL/)
+[Explore!](https://mholovakin.github.io/webGL/)
 
 __Settings:__
 
