@@ -8,6 +8,12 @@ let xVal = 1;
 let yVal = 0;
 let zVal = 0;
 
+let scale = -35.0;
+let offset = 0.0;
+
+let pX = 0.0;
+let pY = 0.0;
+
 function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
@@ -17,9 +23,12 @@ function Model(name) {
     this.name = name;
     this.iVertexBuffer = gl.createBuffer();
     this.iNormalBuffer = gl.createBuffer();
+    this.iTextureBuffer = gl.createBuffer();
+    this.iPointBuffer = gl.createBuffer();
+
     this.count = 0;
 
-    this.BufferData = function({vertexList, normalList}) {
+    this.BufferData = function({vertexList, normalList, textureList}) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexList), gl.STREAM_DRAW);
@@ -27,12 +36,18 @@ function Model(name) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iNormalBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalList), gl.STREAM_DRAW);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iTextureBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureList), gl.STREAM_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iPointBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 0]), gl.STREAM_DRAW);
 
         this.count = vertexList.length / 3;
     }
 
     this.Draw = function() {
 
+        gl.uniform1i(shProgram.iDrawPoint, false);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
@@ -41,8 +56,14 @@ function Model(name) {
         gl.vertexAttribPointer(shProgram.iAttribNormal, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribNormal);
 
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.iTextureBuffer);
+        gl.vertexAttribPointer(shProgram.iTexCoord, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shProgram.iTexCoord);
 
         gl.drawArrays(gl.TRIANGLES_STRIP, 0, this.count);
+
+        gl.uniform1i(shProgram.iDrawPoint, true);
+        gl.drawArrays(gl.POINTS, 0, 1);
 
     }
 }
@@ -67,6 +88,14 @@ function ShaderProgram(name, program) {
 
     this.iShininess = -1;
     this.iLightDir = -1;
+
+    this.iTexCoord = -1;
+    this.iScaleLocation = -1;
+    this.iOffsetLocation = -1;
+
+    this.iPointLocation = -1;
+    this.iPointWorldLocation = -1;
+    this.iDrawPoint = -1;
 
     this.Use = function () {
     gl.useProgram(this.prog);
@@ -104,32 +133,34 @@ function draw() {
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
     gl.uniformMatrix4fv(shProgram.iNormalMatrix, false, normalMatrix);
 
-    gl.uniform1f(shProgram.iShininess, 2.0);
+    gl.uniform1f(shProgram.iShininess, 10.0);
     gl.uniform3fv(shProgram.iLightDir, lDir);
-    gl.uniform3fv(shProgram.iAmbientColor, [0.2, 0.1, 0.0]);
-    gl.uniform3fv(shProgram.iDiffuseColor, [1.0, 1.0, 0.0]);
+    gl.uniform3fv(shProgram.iAmbientColor, [0.1, 0.1, 0.7]);
+    gl.uniform3fv(shProgram.iDiffuseColor, [0, 0.368, 0.721]);
 
     gl.uniform4fv(shProgram.iColor, [1, 1, 0, 1]);
+
+    gl.uniform1f(shProgram.iScaleLocation, scale);
+    gl.uniform1f(shProgram.iOffsetLocation, offset);
+
+    gl.uniform3fv(shProgram.iPointWorldLocation, getPointLocation());
+    gl.uniform2fv(shProgram.iPointLocation,[deg2rad(pX) / (2 * 180), deg2rad(pY) / (2*180)]);
 
     surface.Draw();
 }
 
-function rerender() {
-    surface.BufferData(CreateSurfaceData());
-    draw();
-  }
+function f(u, v) {
+    return Math.acos(-3 * (Math.cos(u) + Math.cos(v)) / (3 + 4 * Math.cos(u) * Math.cos(v)));
+    }
 
 function CreateSurfaceData() {
     const step = .5;
     const min = -180;
     const max = 180;
 
-    function f(u, v) {
-    return Math.acos(-3 * (Math.cos(u) + Math.cos(v)) / (3 + 4 * Math.cos(u) * Math.cos(v)));
-    }
-
     let vertexList = [];
     let normalList = [];
+    let textureList = [];
     for (let u = min; u < max; u += step) {
         const uRad = deg2rad(u);
         for (let v = min; v <= max; v += step) {
@@ -152,10 +183,12 @@ function CreateSurfaceData() {
             vertexList.push(uRad, vRad, -f(uRad, vRad));
             normalList.push(plusNormal[0], plusNormal[1], plusNormal[2]);
             normalList.push(minusNormal[0], minusNormal[1], minusNormal[2]);
+            textureList.push((uRad - min) / (max - min), (vRad - min) / (max - min));
+            textureList.push((uRad - min) / (max - min), (vRad - min) / (max - min));
     }
 }
 
-  return { vertexList, normalList };
+  return { vertexList, normalList, textureList };
 
 }
 
@@ -180,6 +213,14 @@ function initGL() {
     shProgram.iShininess = gl.getUniformLocation(prog, 'shininessVal');
 
     shProgram.iLightDir = gl.getUniformLocation(prog, 'lightDir');
+
+    shProgram.iTexCoord = gl.getAttribLocation(prog, "iTexCoord");
+    shProgram.iScaleLocation = gl.getUniformLocation(prog, 'u_scale');
+    shProgram.iOffsetLocation = gl.getUniformLocation(prog, 'u_offset');
+
+    shProgram.iPointWorldLocation = gl.getUniformLocation(prog, "PointWorldLocation");
+    shProgram.iPointLocation = gl.getUniformLocation(prog, "UserPointLocation");
+    shProgram.iDrawPoint = gl.getUniformLocation(prog, "DrawPoint");
 
     surface = new Model('Surface');
     surface.BufferData(CreateSurfaceData());
@@ -246,7 +287,42 @@ function init() {
 
     spaceball = new TrackballRotator(canvas, draw, 0);
 
-    draw();
+    createTexture();
+}
+
+function getPointLocation(){
+    let pointList = [];
+    let x,y,z;
+
+    x = deg2rad(pX);
+    y = deg2rad(pY);
+    z = f(x, y);
+
+    pointList.push(x,y,z);
+    
+    return pointList;
+}
+
+function createTexture() {
+
+    let texture = gl.createTexture();
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+        new Uint8Array([255, 255, 255, 255]));
+
+    let img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = 'https://www.manytextures.com/download/36/texture/jpg/512/red-brick-wall-512x512.jpg';
+    img.addEventListener('load', function() {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        draw();
+    });
 }
 
 const onArrowLeftKeyX = () => {
@@ -343,6 +419,32 @@ document.addEventListener('keydown', (event) => {
     }
     if (keysPressed['z'] && event.key == 'ArrowRight') {
         onArrowRightKeyZ();
+    }
+    if (event.key == 'w'){
+        pY += 10.0;
+        draw();
+    } 
+    if (event.key == 's'){
+        pY -= 10.0;
+        draw();
+    } 
+    if (event.key == 'a'){
+        pX -= 10.0;
+        draw();
+    } 
+    if (event.key == 'd'){
+        pX += 10.0;
+        draw();
+    } 
+    if (event.key == 'o'){
+        scale -= 1;
+        console.log(scale);
+        draw();
+    }
+    if (event.key == 'p'){
+        scale += 1;
+        console.log(scale);
+        draw();
     }
  });
  
